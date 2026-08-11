@@ -270,6 +270,57 @@ details summary {
   flex-shrink: 0;
 }
 
+.chart-data-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.chart-data-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px;
+}
+.chart-data-row input[type="color"] {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+}
+.chart-data-label {
+  flex: 1;
+  min-width: 0;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.chart-data-value {
+  width: 60px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.chart-data-row button {
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
 .loop-sync-ok {
   color: var(--ok);
   font-size: 12px;

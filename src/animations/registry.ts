@@ -6,6 +6,7 @@ import { textAnimationModule } from "./textAnimation";
 import { shapeMorphModule } from "./shapeMorph";
 import { imageFlickerModule } from "./imageFlicker";
 import { textWallModule } from "./textWall";
+import { chartModule } from "./chart";
 
 // Registering a new animation type means: add it to this array (and to the
 // AnimationConfig union in src/types/scene.ts). Nothing else should need to
@@ -16,6 +17,7 @@ export const ANIMATION_MODULES: AnimationModule<AnimationConfig>[] = [
   shapeMorphModule as AnimationModule<AnimationConfig>,
   imageFlickerModule as AnimationModule<AnimationConfig>,
   textWallModule as AnimationModule<AnimationConfig>,
+  chartModule as AnimationModule<AnimationConfig>,
   demoModule as AnimationModule<AnimationConfig>,
 ];
 

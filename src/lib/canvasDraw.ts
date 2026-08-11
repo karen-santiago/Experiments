@@ -3,7 +3,7 @@ export interface FocalPoint {
   y: number; // 0..1
 }
 
-function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius: number) {
+export function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius: number) {
   const r = Math.min(radius, Math.abs(w) / 2, Math.abs(h) / 2);
   ctx.beginPath();
   ctx.moveTo(x + r, y);
