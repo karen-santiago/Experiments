@@ -2,28 +2,61 @@
 
 A local desktop-run app for making short animations for portfolio case studies. Runs on your machine, no accounts, no cloud, no telemetry.
 
-Full spec: see the original build spec for the five animation types (shape morph, text morph, image field, image flicker, text wall), the data model, and the export formats this is built toward.
+Started from a spec with five animation types (shape morph, text morph, image field, image flicker, text wall); has since grown to eight, plus a multi-font library and considerably more control inside each module, based on follow-up requests. See Status below for the current set.
 
 ## Status
 
-All eight phases from the spec's build order (section 9) are implemented:
+**Animation types (8):** image field, text animation, shape morph, image flicker, text wall, chart (bar/donut), conversation (chat bubbles), and a demo module used for export-accuracy testing. Text morph (the original phase 4/6 module) was removed and replaced by text animation per a later request — see "Text animation" below.
+
+All eight original build-order phases (section 9 of the spec) plus a second round of feature requests are implemented:
 
 - **Phase 1 — Skeleton.** Vite + React + TS app, Node/Express sidecar, ffmpeg detection with a clear on-screen error when it's missing, the `renderFrame(ctx, t, config)` pure-function contract, a rAF preview loop, scrub bar, play/pause, loop toggle, zoom-to-fit, keyboard shortcuts.
 - **Phase 2 — Export.** Frame-capture pipeline that steps `t = frameIndex / fps` (never wall-clock), uploads each PNG to the sidecar, and encodes with native ffmpeg. Progress bar with ETA, cancel, temp-directory cleanup on cancel/completion/failure. All five formats from the spec's table (MP4, WebM/VP9 alpha, ProRes 4444, GIF via palettegen+paletteuse, PNG sequence via zip). MP4 is blocked when the background is transparent.
-- **Phase 3 — Image field.** Content-addressed image storage via the sidecar (browsers can't read back real OS paths from a picked File, so uploads are hashed and stored locally instead — see Architecture below), a seeded PRNG driving every layout decision, four layout modes (scatter/cluster/row/bands), horizontal/vertical drift with seamless wrap, parallax, sway, rotation drift, three entrance modes, a static text overlay, and a "snap duration to loop" control with a live sync check.
-- **Phase 4 — Text morph mode B + font upload.** Font upload (ttf/otf/woff/woff2) persisted via the sidecar, registered with `FontFace` for canvas text. Character-transition mode: per-character crossfade/slide/scale/blur with configurable stagger, direction (including seeded random), and its own opacity easing curve.
+- **Phase 3 — Image field.** Content-addressed image storage via the sidecar (browsers can't read back real OS paths from a picked File, so uploads are hashed and stored locally instead — see Architecture below), a seeded PRNG driving every layout decision, six layout modes (scatter/cluster/row/bands/grid/carousel — see below), horizontal/vertical drift with seamless wrap, parallax, sway, rotation drift, three entrance modes, a static text overlay, and a "snap duration to loop" control with a live sync check.
+- **Phase 4 — Font upload.** Originally a single uploaded font; now a font *library* (see "Multi-font library" below).
 - **Phase 5 — Shape morph.** SVG path upload or direct `d`-string paste, normalized (centered + scaled into a shared viewBox) once at edit time, flubber interpolate/separate/combine dispatch depending on how many subpaths each side has.
-- **Phase 6 — Text morph mode A (glyph morph).** Per-character-pair flubber interpolators built from real opentype.js glyph outlines positioned at their actual advance-width offsets; falls back to character transition when no font is uploaded. Variable fonts are detected on upload with a warning that only the default instance is used.
-- **Phase 7 — Image flicker + text wall.** Flicker: four order modes, hard-cut/crossfade transitions, cover/contain/fill fit. Text wall: grid/marquee-rows/vertical-scroll layouts, three reveal modes, seeded per-word color/size/rotation variance.
+- **Phase 6 — Text animation (replaces text morph).** See "Text animation" below.
+- **Phase 7 — Image flicker + text wall.** Flicker: four order modes, hard-cut/crossfade transitions, cover/contain/fill fit. Text wall: grid/marquee-rows/vertical-scroll layouts, three reveal modes, seeded per-word color/size/rotation variance, and a font override.
 - **Phase 8 — Polish.** Save/load `.motion.json` scenes and presets through the top bar's New/Open/Save/Save As, `cmd+s` shortcut. (Transparent export and all five export formats were already in place from phase 2.)
 
-Adding a sixth animation type means: add a variant to `AnimationConfig` in `src/types/scene.ts`, write a module implementing `AnimationModule` (`src/animations/types.ts`), add one entry to `src/animations/registry.ts`. Nothing else should need to change.
+Adding a new animation type means: add a variant to `AnimationConfig` in `src/types/scene.ts`, write a module implementing `AnimationModule` (`src/animations/types.ts`), add one entry to `src/animations/registry.ts`. Nothing else should need to change — the chart and chat modules below were both built this way without touching any other module.
+
+### Multi-font library
+
+`scene.fonts[]` replaces the original single-font model. Upload as many fonts as you like from the right panel; pick one as the scene default (used as a fallback), and any text-capable module — text animation, text wall, chart, chat — can override it with its own font via a `FontSelect` dropdown. `RenderContext.resolveFont(fontId)` resolves a module's own id, falling back to the scene default when null. Variable fonts are detected on upload with a warning that only the default instance is usable for glyph outlines.
+
+### Text animation (replaces text morph)
+
+The original text morph module (A→B glyph/character transition) was removed at the user's request in favor of single-text reveal styles, since that's what was actually wanted day to day:
+
+- **Type in** — typewriter reveal with a blinking cursor
+- **Grow** — per-character staggered scale + fade in
+- **Quick** — the whole string snaps/fades in together, fast
+- **Rapid fire** — a decode/glitch effect: each character rapidly cycles through random glyphs from a seeded charset before settling on the real one
+
+### Image field: carousel, equidistant grid, per-image aspect ratio
+
+Two layout modes were added beyond the original four:
+
+- **Grid** — every image evenly spaced with zero jitter and no density gaps ("make everything equidistant"), instead of scatter's randomized placement.
+- **Carousel** — a genuinely different motion model (continuous rotation around an axis, not drift+wrap), with two sub-styles: **coverflow** (3D — front image large and opaque, images recede in scale/opacity toward the sides, redrawn back-to-front every frame since draw order depends on the live rotation angle) and **ring** (flat 2D — same size throughout, positioned around a circle).
+
+Each image can also override its box aspect ratio (1:1, 4:5, 3:2, 16:9, 9:16) independently, via a dropdown on its thumbnail.
+
+### Chart builder
+
+A new module, not in the original spec: editable `{label, value, color}` data rows. **Bar** grows each bar from zero to its value, staggered. **Donut** reveals each segment as a clockwise sweep (also staggered) and takes free-text for its center label — literally whatever you type, not a computed percentage.
+
+### Conversation (chat bubbles)
+
+Also new: two speakers, each with a name, an uploaded avatar, and independent bubble/text colors, plus a message script you build as a list of speaker-tagged lines. Messages reveal in sequence with a toggleable typing indicator (bouncing dots) whose duration is independently configurable; newest bubble anchors near the bottom and older ones scroll out of frame once the conversation outgrows the canvas, the way a real chat auto-scrolls.
 
 ### Known gaps
 
 - **ffmpeg wasn't installed in the sandbox this was built in**, so actual video encoding is untested end-to-end — the frame-capture → upload pipeline is verified (a 10s/30fps/1080×1080 export renders and uploads all 300 frames in ~12s, well inside the spec's 60s budget), and the missing-binary path is verified to surface the intended clear error. Encoding itself is a straightforward `spawn("ffmpeg", args)` with args matching the spec's table exactly (`server/ffmpeg.ts`, `src/shared/exportFormats.ts`).
 - **Image flicker's optional per-image duration override** isn't implemented — interval + order + transition + fit are.
-- The bundle is ~560KB minified (mostly opentype.js + flubber). Fine for a local dev-server app; would be worth code-splitting per animation module if this ever needs to ship over a network.
+- **Export quality/bitrate control, trim in/out points, batch export, and custom resolution scaling** were explicitly requested but then de-scoped in favor of "more control over the animations themselves" — not built.
+- The bundle is ~585KB minified (mostly opentype.js + flubber). Fine for a local dev-server app; would be worth code-splitting per animation module if this ever needs to ship over a network.
 
 ## Running it
 
@@ -65,4 +98,4 @@ The sidecar (`server/index.ts`) only handles what needs OS access: ffmpeg detect
 
 ## Verification
 
-Every phase was checked with `tsc -b`, `vite build`, `oxlint`, and a headless-Chromium (Playwright) pass driving the actual UI — uploading real images/fonts, scrubbing the timeline, and screenshotting each animation type mid-motion — rather than just reading the code back. Notably this caught one real bug during phase 3 (the preview's rAF loop had captured a stale `scene` closure at mount, so parameter edits stopped applying once you hit play), which is fixed in `src/components/CanvasPreview.tsx` via a `sceneRef`.
+Every phase — including the second round of feature requests (multi-font, image field carousel/grid/aspect-ratio, text animation, chart, chat) — was checked with `tsc -b`, `vite build`, `oxlint`, and a headless-Chromium (Playwright) pass driving the actual UI: uploading real images/fonts, scrubbing the timeline, screenshotting each animation type mid-motion, and round-tripping saves/loads through the sidecar — rather than just reading the code back. Notably this caught one real bug during phase 3 (the preview's rAF loop had captured a stale `scene` closure at mount, so parameter edits stopped applying once you hit play), which is fixed in `src/components/CanvasPreview.tsx` via a `sceneRef`.
