@@ -7,10 +7,21 @@ type Props = {
   onChange: (next: AssetRef[]) => void;
   /** When provided, clicking a thumbnail reports a normalized (0..1) click position for that image's focal point. */
   onFocalPointClick?: (imageId: string, x: number, y: number) => void;
+  /** When provided (with onAspectRatioChange), each row gets a per-image width:height override control. */
+  aspectRatios?: Record<string, number>;
+  onAspectRatioChange?: (imageId: string, ratio: number) => void;
 };
 
+const ASPECT_PRESETS: Array<{ label: string; value: number }> = [
+  { label: "1:1", value: 1 },
+  { label: "4:5", value: 4 / 5 },
+  { label: "3:2", value: 3 / 2 },
+  { label: "16:9", value: 16 / 9 },
+  { label: "9:16", value: 9 / 16 },
+];
+
 /** Shared file/folder picker + reorderable thumbnail list, used by image field and image flicker. */
-export function ImagePicker({ images, onChange, onFocalPointClick }: Props) {
+export function ImagePicker({ images, onChange, onFocalPointClick, aspectRatios, onAspectRatioChange }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -105,6 +116,20 @@ export function ImagePicker({ images, onChange, onFocalPointClick }: Props) {
               title={onFocalPointClick ? "Click to set focal point" : img.name}
             />
             <span className="thumb-name">{img.name}</span>
+            {aspectRatios && onAspectRatioChange && (
+              <select
+                className="thumb-aspect"
+                value={aspectRatios[img.id] ?? 1}
+                onChange={(e) => onAspectRatioChange(img.id, Number(e.target.value))}
+                title="Aspect ratio"
+              >
+                {ASPECT_PRESETS.map((p) => (
+                  <option key={p.label} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            )}
             <button type="button" onClick={() => moveImage(i, i - 1)} title="Move up">
               ↑
             </button>

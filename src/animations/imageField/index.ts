@@ -1,7 +1,7 @@
 import { getImageBitmap } from "../../lib/imageCache";
 import { drawImageTile } from "../../lib/canvasDraw";
 import { drawWrappedText } from "../shared/text";
-import type { ImageFieldAnimationConfig } from "../../types/scene";
+import type { ImageFieldAnimationConfig, AssetRef } from "../../types/scene";
 import type { AnimationModule, RenderContext } from "../types";
 import { getOrComputeImageFieldLayout, type ImageFieldSlot } from "./layout";
 import { ImageFieldParamsPanel } from "./ImageFieldParamsPanel";
@@ -81,6 +81,89 @@ function drawOverlay(rc: RenderContext, config: ImageFieldAnimationConfig) {
     lineHeight: rc.typography.lineHeight,
     letterSpacing: rc.typography.letterSpacing,
   });
+}
+
+function boxSizeFor(config: ImageFieldAnimationConfig, image: AssetRef | undefined, nominalSize: number, scale: number): { w: number; h: number } {
+  const aspect = (image && config.aspectRatios[image.id]) || 1;
+  const w = nominalSize * scale;
+  return { w, h: w / aspect };
+}
+
+/**
+ * Carousel is a distinct rotating motion, not the shared direction/speed
+ * drift+wrap every other layout uses — each image orbits a fixed angle
+ * (layout.ts spaces the base angles evenly) plus continuous rotation from
+ * carouselRotationSpeed. "ring" keeps every image the same size moving
+ * around a flat circle; "coverflow" projects the ring onto x, scaling and
+ * fading images by how far they've rotated from front-center.
+ */
+function renderCarousel(rc: RenderContext, config: ImageFieldAnimationConfig, layoutSlots: ImageFieldSlot[]) {
+  const { ctx, width, height, t } = rc;
+  const cx = width / 2;
+  const cy = height / 2;
+  const nominalSize = Math.min(width, height) * 0.16;
+  const rotation = t * config.carouselRotationSpeed;
+
+  const withAngle = layoutSlots.map((slot) => {
+    const angleDeg = mod(slot.angleDeg + rotation, 360);
+    const angleRad = (angleDeg * Math.PI) / 180;
+    return { slot, angleRad, front: Math.cos(angleRad) };
+  });
+
+  if (config.carouselStyle === "ring") {
+    // Flat 2D ring: same size throughout, positioned around the circle.
+    withAngle
+      .slice()
+      .sort((a, b) => a.front - b.front)
+      .forEach(({ slot, angleRad }) => {
+        const image = config.images[slot.imageIndex];
+        const bitmap = image && getImageBitmap(image.id);
+        if (!bitmap) return;
+        const x = cx + Math.sin(angleRad) * config.carouselRadius;
+        const y = cy - Math.cos(angleRad) * config.carouselRadius;
+        const { w, h } = boxSizeFor(config, image, nominalSize, slot.scale);
+        drawImageTile(ctx, bitmap, {
+          cx: x,
+          cy: y,
+          width: w,
+          height: h,
+          rotationDeg: slot.rotationBase,
+          cornerRadius: config.cornerRadius,
+          opacity: 1,
+          focal: image ? config.focalPoints[image.id] : undefined,
+          shadow: config.shadowEnabled ? { blur: config.shadowBlur, offsetY: config.shadowOffsetY, opacity: config.shadowOpacity } : null,
+          border: config.borderEnabled ? { width: config.borderWidth, color: config.borderColor } : null,
+        });
+      });
+    return;
+  }
+
+  // coverflow: back-to-front draw order, front-facing images are larger and more opaque.
+  withAngle
+    .slice()
+    .sort((a, b) => a.front - b.front)
+    .forEach(({ slot, angleRad, front }) => {
+      const image = config.images[slot.imageIndex];
+      const bitmap = image && getImageBitmap(image.id);
+      if (!bitmap) return;
+      const frontFactor = (front + 1) / 2; // 0 = back, 1 = front
+      const x = cx + Math.sin(angleRad) * config.carouselRadius;
+      const scaleMul = lerp(1 - config.carouselTilt, 1, frontFactor) * slot.scale;
+      const opacity = lerp(0.15, 1, frontFactor);
+      const { w, h } = boxSizeFor(config, image, nominalSize, scaleMul);
+      drawImageTile(ctx, bitmap, {
+        cx: x,
+        cy: cy,
+        width: w,
+        height: h,
+        rotationDeg: 0,
+        cornerRadius: config.cornerRadius,
+        opacity,
+        focal: image ? config.focalPoints[image.id] : undefined,
+        shadow: config.shadowEnabled ? { blur: config.shadowBlur, offsetY: config.shadowOffsetY, opacity: config.shadowOpacity } : null,
+        border: config.borderEnabled ? { width: config.borderWidth, color: config.borderColor } : null,
+      });
+    });
 }
 
 export const imageFieldModule: AnimationModule<ImageFieldAnimationConfig> = {
@@ -171,16 +254,24 @@ export const imageFieldModule: AnimationModule<ImageFieldAnimationConfig> = {
       return;
     }
 
-    const isHorizontal = config.direction === "ltr" || config.direction === "rtl";
     const tileWidth = width;
     const tileHeight = height;
     const layout = getOrComputeImageFieldLayout(config, tileWidth, tileHeight);
+
+    if (config.layoutMode === "carousel") {
+      renderCarousel(rc, config, layout.slots);
+      if (config.overlayEnabled && config.overlayPosition === "above") drawOverlay(rc, config);
+      return;
+    }
+
+    const isHorizontal = config.direction === "ltr" || config.direction === "rtl";
     const nominalSize = Math.min(width, height) * 0.16;
     const loopDuration = Math.max(duration, 1e-6);
     const dirSign = config.direction === "rtl" || config.direction === "up" ? -1 : 1;
 
     layout.slots.forEach((slot, i) => {
-      const bitmap = getImageBitmap(config.images[slot.imageIndex]?.id ?? "");
+      const image = config.images[slot.imageIndex];
+      const bitmap = image && getImageBitmap(image.id);
       if (!bitmap) return;
 
       const speedFactor = 1 + config.parallax * (slot.depth - 0.5) * 2;
@@ -211,8 +302,7 @@ export const imageFieldModule: AnimationModule<ImageFieldAnimationConfig> = {
       const opacity = (1 - config.depthFade * (1 - slot.depth)) * entrance.opacityMul;
       if (opacity <= 0.002) return;
 
-      const boxW = nominalSize * slot.scale * entrance.scaleMul;
-      const boxH = boxW;
+      const { w: boxW, h: boxH } = boxSizeFor(config, image, nominalSize, slot.scale * entrance.scaleMul);
 
       // Draw three tile copies so images crossing one edge are already
       // visible re-entering the opposite edge — the seamless-loop wrap.
@@ -232,7 +322,7 @@ export const imageFieldModule: AnimationModule<ImageFieldAnimationConfig> = {
             rotationDeg: rotation,
             cornerRadius: config.cornerRadius,
             opacity,
-            focal: config.focalPoints[config.images[slot.imageIndex]?.id ?? ""],
+            focal: config.focalPoints[image.id],
             shadow: config.shadowEnabled
               ? { blur: config.shadowBlur, offsetY: config.shadowOffsetY, opacity: config.shadowOpacity }
               : null,

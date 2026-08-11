@@ -25,6 +25,8 @@ export function ImageFieldParamsPanel({ config, onChange, canvas, onCanvasChange
           images={config.images}
           onChange={(images) => set("images", images)}
           onFocalPointClick={(imageId, x, y) => onChange({ ...config, focalPoints: { ...config.focalPoints, [imageId]: { x, y } } })}
+          aspectRatios={config.aspectRatios}
+          onAspectRatioChange={(imageId, ratio) => onChange({ ...config, aspectRatios: { ...config.aspectRatios, [imageId]: ratio } })}
         />
 
         <label className="field">
@@ -55,6 +57,8 @@ export function ImageFieldParamsPanel({ config, onChange, canvas, onCanvasChange
             <option value="cluster">Cluster</option>
             <option value="row">Row</option>
             <option value="bands">Bands</option>
+            <option value="grid">Grid (equidistant)</option>
+            <option value="carousel">Carousel</option>
           </select>
         </label>
 
@@ -98,8 +102,30 @@ export function ImageFieldParamsPanel({ config, onChange, canvas, onCanvasChange
             <SliderField label="Row gap (px)" value={config.bandsRowGap} min={0} max={200} step={1} onChange={(v) => set("bandsRowGap", v)} />
           </>
         )}
+
+        {config.layoutMode === "grid" && <p className="hint">Every image is placed in an evenly spaced grid — no jitter, no density gaps.</p>}
+
+        {config.layoutMode === "carousel" && (
+          <>
+            <label className="field">
+              <span>Style</span>
+              <select value={config.carouselStyle} onChange={(e) => set("carouselStyle", e.target.value as ImageFieldAnimationConfig["carouselStyle"])}>
+                <option value="coverflow">Coverflow (3D)</option>
+                <option value="ring">Ring (flat 2D)</option>
+              </select>
+            </label>
+            <SliderField label="Radius (px)" value={config.carouselRadius} min={50} max={800} step={10} onChange={(v) => set("carouselRadius", v)} />
+            <SliderField label="Rotation speed (deg/s)" value={config.carouselRotationSpeed} min={-180} max={180} step={1} onChange={(v) => set("carouselRotationSpeed", v)} />
+            {config.carouselStyle === "coverflow" && (
+              <SliderField label="Tilt (recede scale/fade)" value={config.carouselTilt} min={0} max={1} step={0.01} onChange={(v) => set("carouselTilt", v)} />
+            )}
+          </>
+        )}
       </details>
 
+      {config.layoutMode === "carousel" ? (
+        <p className="hint">Carousel's rotation speed, radius, and tilt are set in the Layout section above — the shared direction/speed drift doesn't apply to it.</p>
+      ) : (
       <details open>
         <summary>Motion</summary>
         <label className="field">
@@ -144,6 +170,7 @@ export function ImageFieldParamsPanel({ config, onChange, canvas, onCanvasChange
           <SliderField label="Degrees/loop" value={config.rotationDriftDegreesPerLoop} min={0} max={90} step={1} onChange={(v) => set("rotationDriftDegreesPerLoop", v)} />
         )}
       </details>
+      )}
 
       <details>
         <summary>Appearance</summary>
