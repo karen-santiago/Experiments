@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { Font } from "opentype.js";
 import type { EasingFn } from "../render/easing";
 import type { AnimationConfig, CanvasConfig, PaletteConfig, TypographyConfig } from "../types/scene";
 
@@ -18,6 +19,8 @@ export interface RenderContext {
   easing: EasingFn;
   /** CSS font family registered for the scene's uploaded font, or a generic fallback. */
   fontFamily: string;
+  /** Parsed opentype.js Font for the uploaded font, if one is uploaded and parseable — null otherwise (glyph outlines unavailable). */
+  parsedFont: Font | null;
 }
 
 export interface AnimationModule<TConfig extends AnimationConfig = AnimationConfig> {

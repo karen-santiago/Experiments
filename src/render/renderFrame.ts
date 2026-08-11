@@ -1,5 +1,5 @@
 import { getAnimationModule } from "../animations/registry";
-import { getFontFamily } from "../lib/fontRegistry";
+import { getFontFamily, getParsedFont } from "../lib/fontRegistry";
 import type { SceneConfig } from "../types/scene";
 import { getEasing } from "./easing";
 
@@ -39,6 +39,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, t: number, config: Sc
       typography: config.typography,
       easing: getEasing(config.easing),
       fontFamily: getFontFamily(config.typography.fontFileId),
+      parsedFont: getParsedFont(config.typography.fontFileId),
     },
     config.animation,
   );
