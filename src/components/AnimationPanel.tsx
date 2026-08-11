@@ -1,12 +1,16 @@
 import { ANIMATION_MODULES, getAnimationModule } from "../animations/registry";
-import type { AnimationConfig } from "../types/scene";
+import type { AnimationConfig, CanvasConfig } from "../types/scene";
 
 export function AnimationPanel({
   animation,
   onChange,
+  canvas,
+  onCanvasChange,
 }: {
   animation: AnimationConfig;
   onChange: (next: AnimationConfig) => void;
+  canvas: CanvasConfig;
+  onCanvasChange: (next: CanvasConfig) => void;
 }) {
   const module = getAnimationModule(animation.type);
   const Params = module.ParamsPanel;
@@ -30,7 +34,12 @@ export function AnimationPanel({
         </select>
       </label>
 
-      <Params config={animation} onChange={onChange as (next: typeof animation) => void} />
+      <Params
+        config={animation}
+        onChange={onChange as (next: typeof animation) => void}
+        canvas={canvas}
+        onCanvasChange={onCanvasChange}
+      />
     </div>
   );
 }

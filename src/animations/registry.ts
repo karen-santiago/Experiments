@@ -1,11 +1,15 @@
 import type { AnimationConfig } from "../types/scene";
 import type { AnimationModule } from "./types";
 import { demoModule } from "./demo";
+import { imageFieldModule } from "./imageField";
+import { textMorphModule } from "./textMorph";
 
 // Registering a new animation type means: add it to this array (and to the
 // AnimationConfig union in src/types/scene.ts). Nothing else should need to
 // change — see spec section 5.
 export const ANIMATION_MODULES: AnimationModule<AnimationConfig>[] = [
+  imageFieldModule as AnimationModule<AnimationConfig>,
+  textMorphModule as AnimationModule<AnimationConfig>,
   demoModule as AnimationModule<AnimationConfig>,
 ];
 

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { renderFrame } from "../render/renderFrame";
+import { subscribeImageCache } from "../lib/imageCache";
+import { subscribeFontRegistry } from "../lib/fontRegistry";
 import type { SceneConfig } from "../types/scene";
 
 interface CanvasPreviewProps {
@@ -46,6 +48,21 @@ export function CanvasPreview({ scene, speedMultiplier }: CanvasPreviewProps) {
   useEffect(() => {
     if (!isPlaying) draw(currentTime);
   }, [scene, currentTime, isPlaying]);
+
+  // Images and fonts decode asynchronously outside renderFrame (see
+  // src/lib/imageCache.ts, src/lib/fontRegistry.ts). When one finishes
+  // loading, force a redraw of the current frame so a paused preview
+  // doesn't keep showing placeholders.
+  useEffect(() => {
+    const redraw = () => draw(stateRef.current.currentTime);
+    const unsubImages = subscribeImageCache(redraw);
+    const unsubFonts = subscribeFontRegistry(redraw);
+    return () => {
+      unsubImages();
+      unsubFonts();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const tick = (ts: number) => {

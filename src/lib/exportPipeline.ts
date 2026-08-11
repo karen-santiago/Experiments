@@ -1,6 +1,7 @@
 import { renderFrame } from "../render/renderFrame";
 import type { SceneConfig } from "../types/scene";
 import { SIDECAR_URL, apiPostJson } from "./api";
+import { preloadSceneAssets } from "./preload";
 import type { ExportFormatId } from "../shared/exportFormats";
 
 export interface ExportProgress {
@@ -48,6 +49,12 @@ export async function exportScene({ scene, format, outputDir, onProgress, signal
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not create an offscreen 2D canvas context");
+
+  // Every exported frame has to be correct the first time it's drawn — no
+  // popping in mid-export — so images/fonts are fully decoded up front
+  // rather than lazily inside the frame loop.
+  await preloadSceneAssets(scene);
+  if (signal?.aborted) throw new ExportCancelledError();
 
   const { sessionId } = await apiPostJson<{ sessionId: string }>("/api/export/session", {});
 

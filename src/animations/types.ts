@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
-import type { AnimationConfig, PaletteConfig } from "../types/scene";
+import type { EasingFn } from "../render/easing";
+import type { AnimationConfig, CanvasConfig, PaletteConfig, TypographyConfig } from "../types/scene";
 
 // Every animation module implements this shape. Adding a new animation type
 // means: add a variant to AnimationConfig (src/types/scene.ts), write a
@@ -13,6 +14,10 @@ export interface RenderContext {
   fps: number;
   duration: number;
   palette: PaletteConfig;
+  typography: TypographyConfig;
+  easing: EasingFn;
+  /** CSS font family registered for the scene's uploaded font, or a generic fallback. */
+  fontFamily: string;
 }
 
 export interface AnimationModule<TConfig extends AnimationConfig = AnimationConfig> {
@@ -22,6 +27,9 @@ export interface AnimationModule<TConfig extends AnimationConfig = AnimationConf
   ParamsPanel: ComponentType<{
     config: TConfig;
     onChange: (next: TConfig) => void;
+    /** Read-only canvas context a few params panels need (e.g. image field's loop-snap button). */
+    canvas: CanvasConfig;
+    onCanvasChange: (next: CanvasConfig) => void;
   }>;
   renderFrame: (rc: RenderContext, config: TConfig) => void;
 }

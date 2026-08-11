@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TopBar } from "./components/TopBar";
 import { AnimationPanel } from "./components/AnimationPanel";
 import { CanvasPreview } from "./components/CanvasPreview";
@@ -6,11 +6,20 @@ import { GlobalPanel } from "./components/GlobalPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { createDefaultScene } from "./types/scene";
 import type { SceneConfig } from "./types/scene";
+import { preloadSceneAssets } from "./lib/preload";
 
 function App() {
   const [scene, setScene] = useState<SceneConfig>(createDefaultScene());
   const [speedMultiplier, setSpeedMultiplier] = useState(1);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  // Warm the image/font caches whenever the assets a scene depends on
+  // change (new upload, or a saved scene reopened) — CanvasPreview redraws
+  // itself once each asset resolves via subscribeImageCache/FontRegistry.
+  useEffect(() => {
+    preloadSceneAssets(scene).catch((err) => console.error("Asset preload failed", err));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene.animation, scene.typography.fontFileId]);
 
   return (
     <div className={`app app-theme-${theme}`}>
@@ -21,6 +30,8 @@ function App() {
           <AnimationPanel
             animation={scene.animation}
             onChange={(animation) => setScene({ ...scene, animation })}
+            canvas={scene.canvas}
+            onCanvasChange={(canvas) => setScene({ ...scene, canvas })}
           />
         </aside>
 

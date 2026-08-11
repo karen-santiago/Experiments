@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { SceneConfig } from "../types/scene";
 import { EASINGS, getEasing } from "../render/easing";
+import { uploadAsset } from "../lib/assets";
+import { parseFontBuffer } from "../lib/font";
+import { SliderField } from "./SliderField";
 
 const CANVAS_PRESETS: Array<{ label: string; width: number; height: number }> = [
   { label: "1080 x 1080", width: 1080, height: 1080 },
@@ -30,8 +33,35 @@ export function GlobalPanel({
     onChange({ ...scene, canvas: { ...scene.canvas, ...patch } });
   const setPalette = (patch: Partial<SceneConfig["palette"]>) =>
     onChange({ ...scene, palette: { ...scene.palette, ...patch } });
+  const setTypography = (patch: Partial<SceneConfig["typography"]>) =>
+    onChange({ ...scene, typography: { ...scene.typography, ...patch } });
 
   const [oddWarning, setOddWarning] = useState<string | null>(null);
+  const [fontWarning, setFontWarning] = useState<string | null>(null);
+  const [fontName, setFontName] = useState<string | null>(null);
+  const [uploadingFont, setUploadingFont] = useState(false);
+  const fontInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFontUpload = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadingFont(true);
+    setFontWarning(null);
+    try {
+      const buffer = await file.arrayBuffer();
+      const parsed = await parseFontBuffer(buffer);
+      if (parsed?.isVariable) {
+        setFontWarning("This is a variable font — only its default instance will be used for outline-based morphing.");
+      }
+      const uploaded = await uploadAsset("font", file);
+      setFontName(uploaded.originalName);
+      setTypography({ fontFileId: uploaded.id });
+    } catch (err) {
+      setFontWarning(err instanceof Error ? err.message : String(err));
+    } finally {
+      setUploadingFont(false);
+    }
+  };
+
   return (
     <div className="global-panel panel-section">
       <h3>Canvas</h3>
@@ -147,6 +177,39 @@ export function GlobalPanel({
           value={speedMultiplier}
           onChange={(e) => onSpeedMultiplierChange(Number(e.target.value))}
         />
+      </label>
+
+      <h3>Typography</h3>
+      <label className="field">
+        <span>Font</span>
+        <div className="field-row">
+          <button type="button" disabled={uploadingFont} onClick={() => fontInputRef.current?.click()}>
+            {fontName ?? "Upload font…"}
+          </button>
+        </div>
+        <input
+          ref={fontInputRef}
+          type="file"
+          accept=".ttf,.otf,.woff,.woff2"
+          hidden
+          onChange={(e) => {
+            void handleFontUpload(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+      </label>
+      {fontWarning && <p className="warning">{fontWarning}</p>}
+
+      <SliderField label="Font size" value={scene.typography.fontSize} min={8} max={300} step={1} onChange={(v) => setTypography({ fontSize: v })} />
+      <SliderField label="Letter spacing" value={scene.typography.letterSpacing} min={-10} max={60} step={0.5} onChange={(v) => setTypography({ letterSpacing: v })} />
+      <SliderField label="Line height" value={scene.typography.lineHeight} min={0.8} max={2.5} step={0.05} onChange={(v) => setTypography({ lineHeight: v })} />
+      <label className="field">
+        <span>Text align</span>
+        <select value={scene.typography.textAlign} onChange={(e) => setTypography({ textAlign: e.target.value as SceneConfig["typography"]["textAlign"] })}>
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+          <option value="right">Right</option>
+        </select>
       </label>
 
       <h3>Easing</h3>
