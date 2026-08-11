@@ -1,29 +1,9 @@
 import { createRng } from "../../lib/prng";
 import { layoutCharacters } from "../shared/charLayout";
-import type { TextAnimationConfig, LoopMode } from "../../types/scene";
+import { computeElapsedSinceStart } from "../shared/holdTransition";
+import type { TextAnimationConfig } from "../../types/scene";
 import type { AnimationModule, RenderContext } from "../types";
 import { TextAnimationParamsPanel } from "./TextAnimationParamsPanel";
-
-function mod(n: number, m: number): number {
-  return ((n % m) + m) % m;
-}
-
-/** Seconds elapsed since the reveal started, clamped to [0, revealDuration], honoring loop/ping-pong/once. */
-function computeRevealElapsed(t: number, holdStart: number, revealDuration: number, holdEnd: number, loopMode: LoopMode): number {
-  const cycle = Math.max(holdStart + revealDuration + holdEnd, 1e-6);
-  let tt: number;
-  if (loopMode === "once") {
-    tt = Math.min(t, cycle);
-  } else if (loopMode === "loop") {
-    tt = mod(t, cycle);
-  } else {
-    const period = cycle * 2;
-    const phase = mod(t, period);
-    tt = phase <= cycle ? phase : period - phase;
-  }
-  if (tt < holdStart) return 0;
-  return Math.min(tt - holdStart, revealDuration);
-}
 
 function revealDurationFor(config: TextAnimationConfig): number {
   const n = [...config.text].length;
@@ -183,7 +163,7 @@ export const textAnimationModule: AnimationModule<TextAnimationConfig> = {
     if (!config.text.trim()) return;
     const fontFamily = rc.resolveFont(config.fontId).family;
     const revealDuration = revealDurationFor(config);
-    const elapsed = computeRevealElapsed(rc.t, config.holdStart, revealDuration, config.holdEnd, config.loopMode);
+    const elapsed = computeElapsedSinceStart(rc.t, config.holdStart, revealDuration, config.holdEnd, config.loopMode);
 
     switch (config.style) {
       case "typeIn":

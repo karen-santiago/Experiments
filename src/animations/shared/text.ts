@@ -51,6 +51,26 @@ function fillTextWithLetterSpacing(
   });
 }
 
+/** Greedy word-wrap: breaks `text` into lines no wider than `maxWidth` at the current ctx.font. Respects existing `\n` breaks. */
+export function wrapTextToLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const lines: string[] = [];
+  for (const paragraph of text.split("\n")) {
+    const words = paragraph.split(" ");
+    let current = "";
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (current && ctx.measureText(candidate).width > maxWidth) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = candidate;
+      }
+    }
+    lines.push(current);
+  }
+  return lines;
+}
+
 /** Draws `\n`-delimited multi-line text centered vertically on `y`. */
 export function drawWrappedText(ctx: CanvasRenderingContext2D, text: string, opts: WrappedTextOptions) {
   const lines = text.split("\n");

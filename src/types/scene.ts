@@ -275,6 +275,7 @@ export interface ChatAnimationConfig {
   typingDotColor: string;
 
   loopMode: LoopMode;
+  holdStart: number; // pause before the first message's typing indicator/bubble
   holdEnd: number; // hold after the last message before looping
 }
 

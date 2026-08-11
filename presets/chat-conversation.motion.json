@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "name": "chat-conversation",
+  "canvas": {
+    "width": 1080,
+    "height": 1920,
+    "background": "#0b0b0d",
+    "fps": 30,
+    "duration": 6
+  },
+  "typography": {
+    "fontFileId": null,
+    "fontSize": 48,
+    "letterSpacing": 0,
+    "lineHeight": 1.2,
+    "textAlign": "center"
+  },
+  "palette": {
+    "primary": "#f5f5f0",
+    "secondary": "#8a8a8a",
+    "accent": "#ff5a36"
+  },
+  "easing": "easeOutCubic",
+  "fonts": [],
+  "animation": {
+    "type": "chat",
+    "messages": [
+      { "id": "m1", "speaker": "a", "text": "Hey! Have you seen the new case study?" },
+      { "id": "m2", "speaker": "b", "text": "Not yet, send it over" },
+      { "id": "m3", "speaker": "a", "text": "Just did 🎬" },
+      { "id": "m4", "speaker": "b", "text": "This looks amazing!" }
+    ],
+    "avatarA": null,
+    "avatarB": null,
+    "nameA": "Alex",
+    "nameB": "Sam",
+    "bubbleColorA": "#2c2d32",
+    "bubbleColorB": "#ff5a36",
+    "textColorA": "#f5f5f0",
+    "textColorB": "#ffffff",
+    "fontId": null,
+    "fontSize": 32,
+    "bubbleCornerRadius": 20,
+    "messageIntervalMs": 500,
+    "showTypingIndicator": true,
+    "typingDurationMs": 700,
+    "typingDotColor": "#f5f5f0",
+    "loopMode": "loop",
+    "holdStart": 0.3,
+    "holdEnd": 1.4
+  }
+}
