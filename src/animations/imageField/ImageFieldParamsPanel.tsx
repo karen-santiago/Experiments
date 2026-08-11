@@ -1,7 +1,6 @@
-import { useRef, useState } from "react";
 import type { CanvasConfig, ImageFieldAnimationConfig } from "../../types/scene";
-import { assetUrl, uploadAsset } from "../../lib/assets";
 import { SliderField } from "../../components/SliderField";
+import { ImagePicker } from "../../components/ImagePicker";
 
 type Props = {
   config: ImageFieldAnimationConfig;
@@ -11,48 +10,8 @@ type Props = {
 };
 
 export function ImageFieldParamsPanel({ config, onChange, canvas, onCanvasChange }: Props) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-
   const set = <K extends keyof ImageFieldAnimationConfig>(key: K, value: ImageFieldAnimationConfig[K]) =>
     onChange({ ...config, [key]: value });
-
-  const handleFiles = async (fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0) return;
-    setUploading(true);
-    try {
-      const files = Array.from(fileList).filter((f) => /\.(jpe?g|png|webp)$/i.test(f.name));
-      const uploaded = await Promise.all(files.map((f) => uploadAsset("image", f)));
-      const next = [...config.images, ...uploaded.map((u) => ({ id: u.id, name: u.originalName }))];
-      onChange({ ...config, images: next });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const moveImage = (from: number, to: number) => {
-    if (to < 0 || to >= config.images.length) return;
-    const next = config.images.slice();
-    const [item] = next.splice(from, 1);
-    next.splice(to, 0, item);
-    set("images", next);
-  };
-
-  const removeImage = (index: number) => {
-    set(
-      "images",
-      config.images.filter((_, i) => i !== index),
-    );
-  };
-
-  const duplicateImage = (index: number) => {
-    const next = config.images.slice();
-    next.splice(index + 1, 0, { ...next[index] });
-    set("images", next);
-  };
-
-  const dragIndex = useRef<number | null>(null);
 
   const targetLoopDuration = canvas.width / Math.max(config.speed, 1e-6);
   const inSync = Math.abs(canvas.duration - targetLoopDuration) < 1 / canvas.fps;
@@ -62,81 +21,11 @@ export function ImageFieldParamsPanel({ config, onChange, canvas, onCanvasChange
       <details open>
         <summary>Images ({config.images.length})</summary>
 
-        <div className="field-row" style={{ marginTop: 8 }}>
-          <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
-            Add files
-          </button>
-          <button type="button" disabled={uploading} onClick={() => folderInputRef.current?.click()}>
-            Add folder
-          </button>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-          multiple
-          hidden
-          onChange={(e) => {
-            void handleFiles(e.target.files);
-            e.target.value = "";
-          }}
+        <ImagePicker
+          images={config.images}
+          onChange={(images) => set("images", images)}
+          onFocalPointClick={(imageId, x, y) => onChange({ ...config, focalPoints: { ...config.focalPoints, [imageId]: { x, y } } })}
         />
-        <input
-          ref={folderInputRef}
-          type="file"
-          multiple
-          hidden
-          // @ts-expect-error non-standard attribute, Chromium-only folder picking
-          webkitdirectory=""
-          onChange={(e) => {
-            void handleFiles(e.target.files);
-            e.target.value = "";
-          }}
-        />
-
-        {uploading && <p className="hint">Uploading…</p>}
-
-        <ul className="thumb-list">
-          {config.images.map((img, i) => (
-            <li
-              key={`${img.id}-${i}`}
-              className="thumb-row"
-              draggable
-              onDragStart={() => (dragIndex.current = i)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => {
-                if (dragIndex.current !== null) moveImage(dragIndex.current, i);
-                dragIndex.current = null;
-              }}
-            >
-              <img
-                src={assetUrl("image", img.id)}
-                alt={img.name}
-                className="thumb-img"
-                onClick={(e) => {
-                  const rect = (e.target as HTMLElement).getBoundingClientRect();
-                  const x = (e.clientX - rect.left) / rect.width;
-                  const y = (e.clientY - rect.top) / rect.height;
-                  onChange({ ...config, focalPoints: { ...config.focalPoints, [img.id]: { x, y } } });
-                }}
-                title="Click to set focal point"
-              />
-              <span className="thumb-name">{img.name}</span>
-              <button type="button" onClick={() => moveImage(i, i - 1)} title="Move up">
-                ↑
-              </button>
-              <button type="button" onClick={() => moveImage(i, i + 1)} title="Move down">
-                ↓
-              </button>
-              <button type="button" onClick={() => duplicateImage(i)} title="Duplicate">
-                ⧉
-              </button>
-              <button type="button" onClick={() => removeImage(i)} title="Remove">
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
 
         <label className="field">
           <span>Assignment</span>
