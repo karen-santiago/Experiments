@@ -1,17 +1,54 @@
 import { useState } from "react";
-import type { TextWallAnimationConfig } from "../../types/scene";
+import type { AssetRef, CanvasConfig, TextWallAnimationConfig, TypographyConfig } from "../../types/scene";
 import { SliderField } from "../../components/SliderField";
+import { FontSelect } from "../../components/FontSelect";
+import { getFontFamily } from "../../lib/fontRegistry";
 
 type Props = {
   config: TextWallAnimationConfig;
   onChange: (next: TextWallAnimationConfig) => void;
+  canvas: CanvasConfig;
+  onCanvasChange: (next: CanvasConfig) => void;
+  fonts: AssetRef[];
+  typography: TypographyConfig;
 };
 
-export function TextWallParamsPanel({ config, onChange }: Props) {
+// A lightweight, self-contained estimate (ignores per-word font-size
+// variance) used only for the snap-to-loop button — the actual render path
+// (src/animations/textWall/index.ts) always measures precisely per frame.
+function estimateMarqueeTileWidth(config: TextWallAnimationConfig, fontFamily: string, canvas: CanvasConfig, baseFontSize: number): number {
+  const measureCanvas = document.createElement("canvas");
+  const ctx = measureCanvas.getContext("2d")!;
+  const rowCount = Math.max(2, Math.min(6, Math.round(Math.sqrt(config.words.length || 1))));
+  const gap = Math.min(canvas.width, canvas.height) * 0.06;
+  ctx.font = `${baseFontSize}px ${fontFamily}`;
+  const rows: number[] = Array.from({ length: rowCount }, () => 0);
+  config.words.forEach((w, i) => (rows[i % rowCount] += ctx.measureText(w).width + gap));
+  return Math.max(canvas.width, ...rows);
+}
+
+function estimateVerticalTileHeight(config: TextWallAnimationConfig, canvas: CanvasConfig, baseFontSize: number): number {
+  const gap = Math.min(canvas.width, canvas.height) * 0.03;
+  return config.words.length * (baseFontSize + gap);
+}
+
+export function TextWallParamsPanel({ config, onChange, canvas, onCanvasChange, fonts, typography }: Props) {
   const set = <K extends keyof TextWallAnimationConfig>(key: K, value: TextWallAnimationConfig[K]) =>
     onChange({ ...config, [key]: value });
 
   const [draft, setDraft] = useState(config.words.join("\n"));
+
+  const fontFamily = getFontFamily(config.fontId ?? typography.fontFileId);
+  const baseFontSize = typography.fontSize;
+  const isMarquee = config.layout === "marqueeRows";
+  const isVertical = config.layout === "verticalScroll";
+  const targetTile = isMarquee
+    ? estimateMarqueeTileWidth(config, fontFamily, canvas, baseFontSize)
+    : isVertical
+      ? estimateVerticalTileHeight(config, canvas, baseFontSize)
+      : 0;
+  const targetDuration = targetTile / Math.max(Math.abs(config.scrollSpeed), 1e-6);
+  const inSync = (isMarquee || isVertical) && Math.abs(canvas.duration - targetDuration) < 1 / canvas.fps;
 
   return (
     <div className="params-panel">
@@ -30,6 +67,8 @@ export function TextWallParamsPanel({ config, onChange }: Props) {
         />
       </label>
 
+      <FontSelect fonts={fonts} value={config.fontId} onChange={(fontId) => set("fontId", fontId)} />
+
       <label className="field">
         <span>Layout</span>
         <select value={config.layout} onChange={(e) => set("layout", e.target.value as TextWallAnimationConfig["layout"])}>
@@ -40,7 +79,16 @@ export function TextWallParamsPanel({ config, onChange }: Props) {
       </label>
 
       {config.layout !== "grid" && (
-        <SliderField label="Scroll speed (px/s)" value={config.scrollSpeed} min={-400} max={400} step={5} onChange={(v) => set("scrollSpeed", v)} />
+        <>
+          <SliderField label="Scroll speed (px/s)" value={config.scrollSpeed} min={-400} max={400} step={5} onChange={(v) => set("scrollSpeed", v)} />
+          <p className="hint">One full loop takes {targetDuration.toFixed(2)}s at this speed.</p>
+          <div className="field-row">
+            <button type="button" onClick={() => onCanvasChange({ ...canvas, duration: Number(targetDuration.toFixed(3)) })}>
+              Snap duration to loop
+            </button>
+            {inSync && <span className="loop-sync-ok">✓ in sync</span>}
+          </div>
+        </>
       )}
 
       <label className="field">

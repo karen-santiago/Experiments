@@ -2,7 +2,7 @@ import type { AnimationConfig } from "../types/scene";
 import type { AnimationModule } from "./types";
 import { demoModule } from "./demo";
 import { imageFieldModule } from "./imageField";
-import { textMorphModule } from "./textMorph";
+import { textAnimationModule } from "./textAnimation";
 import { shapeMorphModule } from "./shapeMorph";
 import { imageFlickerModule } from "./imageFlicker";
 import { textWallModule } from "./textWall";
@@ -12,7 +12,7 @@ import { textWallModule } from "./textWall";
 // change — see spec section 5.
 export const ANIMATION_MODULES: AnimationModule<AnimationConfig>[] = [
   imageFieldModule as AnimationModule<AnimationConfig>,
-  textMorphModule as AnimationModule<AnimationConfig>,
+  textAnimationModule as AnimationModule<AnimationConfig>,
   shapeMorphModule as AnimationModule<AnimationConfig>,
   imageFlickerModule as AnimationModule<AnimationConfig>,
   textWallModule as AnimationModule<AnimationConfig>,

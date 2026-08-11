@@ -71,6 +71,12 @@
     "overlayText": "Case Study",
     "overlaySize": 64,
     "overlayColor": "#111111",
-    "overlayPosition": "above"
-  }
+    "overlayPosition": "above",
+    "aspectRatios": {},
+    "carouselStyle": "coverflow",
+    "carouselRadius": 320,
+    "carouselRotationSpeed": 40,
+    "carouselTilt": 0.6
+  },
+  "fonts": []
 }

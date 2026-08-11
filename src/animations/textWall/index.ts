@@ -7,7 +7,7 @@ function mod(n: number, m: number): number {
   return ((n % m) + m) % m;
 }
 
-function drawWord(rc: RenderContext, style: WordStyle, x: number, y: number, opacity: number, scale: number) {
+function drawWord(rc: RenderContext, fontFamily: string, style: WordStyle, x: number, y: number, opacity: number, scale: number) {
   if (opacity <= 0.002) return;
   const { ctx } = rc;
   ctx.save();
@@ -15,7 +15,7 @@ function drawWord(rc: RenderContext, style: WordStyle, x: number, y: number, opa
   ctx.translate(x, y);
   ctx.rotate((style.rotation * Math.PI) / 180);
   ctx.scale(scale, scale);
-  ctx.font = `${style.fontSize}px ${rc.fontFamily}`;
+  ctx.font = `${style.fontSize}px ${fontFamily}`;
   ctx.fillStyle = style.color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -23,15 +23,15 @@ function drawWord(rc: RenderContext, style: WordStyle, x: number, y: number, opa
   ctx.restore();
 }
 
-function measureWidth(rc: RenderContext, style: WordStyle): number {
+function measureWidth(rc: RenderContext, fontFamily: string, style: WordStyle): number {
   rc.ctx.save();
-  rc.ctx.font = `${style.fontSize}px ${rc.fontFamily}`;
+  rc.ctx.font = `${style.fontSize}px ${fontFamily}`;
   const w = rc.ctx.measureText(style.text).width;
   rc.ctx.restore();
   return w;
 }
 
-function renderGrid(rc: RenderContext, config: TextWallAnimationConfig, styles: WordStyle[]) {
+function renderGrid(rc: RenderContext, config: TextWallAnimationConfig, fontFamily: string, styles: WordStyle[]) {
   const { width, height } = rc;
   const n = styles.length;
   if (n === 0) return;
@@ -46,11 +46,42 @@ function renderGrid(rc: RenderContext, config: TextWallAnimationConfig, styles: 
     const x = (col + 0.5) * cellW;
     const y = (row + 0.5) * cellH;
     const reveal = computeReveal(config, style.order, rc.t);
-    drawWord(rc, style, x, y, reveal.opacity, reveal.scale);
+    drawWord(rc, fontFamily, style, x, y, reveal.opacity, reveal.scale);
   });
 }
 
-function renderMarqueeRows(rc: RenderContext, config: TextWallAnimationConfig, styles: WordStyle[]) {
+/**
+ * All marquee rows share one tile width (the widest row's natural content
+ * width, or the canvas width, whichever is larger) instead of each row
+ * wrapping at its own natural width. That's what makes the whole layout
+ * loop seamlessly at a single duration — see computeMarqueeTileWidth,
+ * which the params panel's "snap duration to loop" button also calls.
+ */
+export function computeMarqueeTileWidth(
+  ctx: CanvasRenderingContext2D,
+  fontFamily: string,
+  styles: WordStyle[],
+  rowCount: number,
+  canvasWidth: number,
+  gap: number,
+): number {
+  const rows: WordStyle[][] = Array.from({ length: rowCount }, () => []);
+  styles.forEach((s, i) => rows[i % rowCount].push(s));
+  let maxWidth = canvasWidth;
+  for (const rowWords of rows) {
+    ctx.save();
+    let rowWidth = 0;
+    for (const s of rowWords) {
+      ctx.font = `${s.fontSize}px ${fontFamily}`;
+      rowWidth += ctx.measureText(s.text).width + gap;
+    }
+    ctx.restore();
+    if (rowWidth > maxWidth) maxWidth = rowWidth;
+  }
+  return maxWidth;
+}
+
+function renderMarqueeRows(rc: RenderContext, config: TextWallAnimationConfig, fontFamily: string, styles: WordStyle[]) {
   const { width, height, t } = rc;
   const n = styles.length;
   if (n === 0) return;
@@ -60,45 +91,48 @@ function renderMarqueeRows(rc: RenderContext, config: TextWallAnimationConfig, s
 
   const gap = Math.min(width, height) * 0.06;
   const rowHeight = height / rowCount;
+  const sharedTileWidth = computeMarqueeTileWidth(rc.ctx, fontFamily, styles, rowCount, width, gap);
 
   rows.forEach((rowWords, rowIndex) => {
     if (rowWords.length === 0) return;
-    const widths = rowWords.map((s) => measureWidth(rc, s) + gap);
-    const tileWidth = widths.reduce((a, b) => a + b, 0);
-    if (tileWidth <= 0) return;
+    const widths = rowWords.map((s) => measureWidth(rc, fontFamily, s) + gap);
 
     const direction = rowIndex % 2 === 0 ? 1 : -1;
     // Offset each row's starting position so rows don't line up into a grid.
-    const startOffset = (rowIndex / rowCount) * tileWidth * 0.37;
-    const scrollOffset = mod(config.scrollSpeed * t * direction + startOffset, tileWidth);
+    const startOffset = (rowIndex / rowCount) * sharedTileWidth * 0.37;
+    const scrollOffset = mod(config.scrollSpeed * t * direction + startOffset, sharedTileWidth);
 
     const y = (rowIndex + 0.5) * rowHeight;
     let cursor = -scrollOffset;
     // Draw enough repeats to cover the full canvas width plus one extra tile on each side.
-    while (cursor < width + tileWidth) {
+    while (cursor < width + sharedTileWidth) {
       let x = cursor;
       for (let i = 0; i < rowWords.length; i++) {
         const w = widths[i];
         const wordCenterX = x + w / 2 - gap / 2;
-        if (wordCenterX > -tileWidth && wordCenterX < width + tileWidth) {
+        if (wordCenterX > -sharedTileWidth && wordCenterX < width + sharedTileWidth) {
           const reveal = computeReveal(config, rowWords[i].order, t);
-          drawWord(rc, rowWords[i], wordCenterX, y, reveal.opacity, reveal.scale);
+          drawWord(rc, fontFamily, rowWords[i], wordCenterX, y, reveal.opacity, reveal.scale);
         }
         x += w;
       }
-      cursor += tileWidth;
+      cursor += sharedTileWidth;
     }
   });
 }
 
-function renderVerticalScroll(rc: RenderContext, config: TextWallAnimationConfig, styles: WordStyle[]) {
+export function computeVerticalScrollTileHeight(styles: WordStyle[], gap: number): number {
+  return styles.reduce((sum, s) => sum + s.fontSize + gap, 0);
+}
+
+function renderVerticalScroll(rc: RenderContext, config: TextWallAnimationConfig, fontFamily: string, styles: WordStyle[]) {
   const { width, height, t } = rc;
   const n = styles.length;
   if (n === 0) return;
 
   const gap = Math.min(width, height) * 0.03;
   const lineHeights = styles.map((s) => s.fontSize + gap);
-  const tileHeight = lineHeights.reduce((a, b) => a + b, 0);
+  const tileHeight = computeVerticalScrollTileHeight(styles, gap);
   if (tileHeight <= 0) return;
 
   const scrollOffset = mod(config.scrollSpeed * t, tileHeight);
@@ -112,7 +146,7 @@ function renderVerticalScroll(rc: RenderContext, config: TextWallAnimationConfig
       const centerY = y + h / 2 - gap / 2;
       if (centerY > -tileHeight && centerY < height + tileHeight) {
         const reveal = computeReveal(config, styles[i].order, t);
-        drawWord(rc, styles[i], x, centerY, reveal.opacity, reveal.scale);
+        drawWord(rc, fontFamily, styles[i], x, centerY, reveal.opacity, reveal.scale);
       }
       y += h;
     }
@@ -134,6 +168,7 @@ export const textWallModule: AnimationModule<TextWallAnimationConfig> = {
     fontSizeVariance: 0,
     rotationVariance: 0,
     seed: 1,
+    fontId: null,
   },
   ParamsPanel: TextWallParamsPanel,
   renderFrame(rc, config) {
@@ -150,9 +185,10 @@ export const textWallModule: AnimationModule<TextWallAnimationConfig> = {
       return;
     }
 
+    const fontFamily = rc.resolveFont(config.fontId).family;
     const styles = getOrComputeWordStyles(config, rc.typography.fontSize, rc.palette);
-    if (config.layout === "grid") renderGrid(rc, config, styles);
-    else if (config.layout === "marqueeRows") renderMarqueeRows(rc, config, styles);
-    else renderVerticalScroll(rc, config, styles);
+    if (config.layout === "grid") renderGrid(rc, config, fontFamily, styles);
+    else if (config.layout === "marqueeRows") renderMarqueeRows(rc, config, fontFamily, styles);
+    else renderVerticalScroll(rc, config, fontFamily, styles);
   },
 };

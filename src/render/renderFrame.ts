@@ -26,6 +26,7 @@ export function renderFrame(ctx: CanvasRenderingContext2D, t: number, config: Sc
     ctx.fillRect(0, 0, width, height);
   }
 
+  const defaultFontId = config.typography.fontFileId;
   const module = getAnimationModule(config.animation.type);
   module.renderFrame(
     {
@@ -38,8 +39,10 @@ export function renderFrame(ctx: CanvasRenderingContext2D, t: number, config: Sc
       palette: config.palette,
       typography: config.typography,
       easing: getEasing(config.easing),
-      fontFamily: getFontFamily(config.typography.fontFileId),
-      parsedFont: getParsedFont(config.typography.fontFileId),
+      resolveFont: (fontId) => {
+        const id = fontId ?? defaultFontId;
+        return { family: getFontFamily(id), parsedFont: getParsedFont(id) };
+      },
     },
     config.animation,
   );

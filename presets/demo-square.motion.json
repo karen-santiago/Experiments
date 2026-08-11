@@ -26,5 +26,6 @@
     "shape": "square",
     "rotationSpeed": 45,
     "showFrameCounter": true
-  }
+  },
+  "fonts": []
 }

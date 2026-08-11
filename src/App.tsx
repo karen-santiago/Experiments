@@ -23,7 +23,7 @@ function App() {
   useEffect(() => {
     preloadSceneAssets(scene).catch((err) => console.error("Asset preload failed", err));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene.animation, scene.typography.fontFileId]);
+  }, [scene.animation, scene.typography.fontFileId, scene.fonts]);
 
   const handleSave = async (name?: string) => {
     const toSave = name ? { ...scene, name } : scene;
@@ -101,6 +101,8 @@ function App() {
             onChange={(animation) => setScene({ ...scene, animation })}
             canvas={scene.canvas}
             onCanvasChange={(canvas) => setScene({ ...scene, canvas })}
+            fonts={scene.fonts}
+            typography={scene.typography}
           />
         </aside>
 

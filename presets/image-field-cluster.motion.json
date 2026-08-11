@@ -71,6 +71,12 @@
     "overlayText": "",
     "overlaySize": 64,
     "overlayColor": "#f5f5f0",
-    "overlayPosition": "above"
-  }
+    "overlayPosition": "above",
+    "aspectRatios": {},
+    "carouselStyle": "coverflow",
+    "carouselRadius": 320,
+    "carouselRotationSpeed": 40,
+    "carouselTilt": 0.6
+  },
+  "fonts": []
 }

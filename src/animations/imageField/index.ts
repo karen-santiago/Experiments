@@ -75,7 +75,7 @@ function drawOverlay(rc: RenderContext, config: ImageFieldAnimationConfig) {
     x: rc.width / 2,
     y: rc.height / 2,
     fontSize: config.overlaySize,
-    fontFamily: rc.fontFamily,
+    fontFamily: rc.resolveFont(null).family,
     color: config.overlayColor,
     align: "center",
     lineHeight: rc.typography.lineHeight,
@@ -90,6 +90,7 @@ export const imageFieldModule: AnimationModule<ImageFieldAnimationConfig> = {
     type: "imageField",
     images: [],
     focalPoints: {},
+    aspectRatios: {},
     seed: 1,
     assignment: "order",
     layoutMode: "scatter",
@@ -111,6 +112,11 @@ export const imageFieldModule: AnimationModule<ImageFieldAnimationConfig> = {
 
     bandsRowCount: 3,
     bandsRowGap: 40,
+
+    carouselStyle: "coverflow",
+    carouselRadius: 320,
+    carouselRotationSpeed: 40,
+    carouselTilt: 0.6,
 
     direction: "ltr",
     speed: 60,

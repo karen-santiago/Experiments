@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "name": "text-morph-headline",
+  "name": "text-animation-typein",
   "canvas": {
     "width": 1920,
     "height": 1080,
@@ -10,7 +10,7 @@
   },
   "typography": {
     "fontFileId": null,
-    "fontSize": 120,
+    "fontSize": 96,
     "letterSpacing": 0,
     "lineHeight": 1.2,
     "textAlign": "center"
@@ -21,25 +21,29 @@
     "accent": "#ff5a36"
   },
   "easing": "easeOutCubic",
+  "fonts": [],
   "animation": {
-    "type": "textMorph",
-    "mode": "character",
-    "textA": "Before",
-    "textB": "After",
-    "holdStart": 0.7,
-    "transitionDuration": 0.7,
-    "holdEnd": 0.9,
+    "type": "textAnimation",
+    "style": "typeIn",
+    "text": "Case Study 01",
+    "fontId": null,
+    "holdStart": 0.3,
+    "holdEnd": 1.0,
     "color": "#f5f5f0",
     "strokeEnabled": false,
     "strokeColor": "#000000",
     "strokeWidth": 2,
     "loopMode": "loop",
-    "staggerMs": 35,
-    "direction": "up",
-    "blurAmount": 10,
-    "scaleFrom": 0.7,
-    "scaleTo": 1,
-    "opacityEasing": "easeOutCubic",
+    "charIntervalMs": 55,
+    "showCursor": true,
+    "cursorColor": "#f5f5f0",
+    "growStaggerMs": 40,
+    "growDurationMs": 350,
+    "growScaleFrom": 0.4,
+    "quickDurationMs": 250,
+    "rapidFireStaggerMs": 50,
+    "rapidFireCycleMs": 350,
+    "rapidFireCharset": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
     "seed": 1
   }
 }

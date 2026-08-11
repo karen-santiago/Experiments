@@ -1,16 +1,20 @@
 import { ANIMATION_MODULES, getAnimationModule } from "../animations/registry";
-import type { AnimationConfig, CanvasConfig } from "../types/scene";
+import type { AnimationConfig, AssetRef, CanvasConfig, TypographyConfig } from "../types/scene";
 
 export function AnimationPanel({
   animation,
   onChange,
   canvas,
   onCanvasChange,
+  fonts,
+  typography,
 }: {
   animation: AnimationConfig;
   onChange: (next: AnimationConfig) => void;
   canvas: CanvasConfig;
   onCanvasChange: (next: CanvasConfig) => void;
+  fonts: AssetRef[];
+  typography: TypographyConfig;
 }) {
   const module = getAnimationModule(animation.type);
   const Params = module.ParamsPanel;
@@ -39,6 +43,8 @@ export function AnimationPanel({
         onChange={onChange as (next: typeof animation) => void}
         canvas={canvas}
         onCanvasChange={onCanvasChange}
+        fonts={fonts}
+        typography={typography}
       />
     </div>
   );

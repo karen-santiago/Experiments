@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { SceneConfig } from "../types/scene";
+import type { AssetRef, SceneConfig } from "../types/scene";
 import { EASINGS, getEasing } from "../render/easing";
 import { uploadAsset } from "../lib/assets";
 import { parseFontBuffer } from "../lib/font";
@@ -38,28 +38,38 @@ export function GlobalPanel({
 
   const [oddWarning, setOddWarning] = useState<string | null>(null);
   const [fontWarning, setFontWarning] = useState<string | null>(null);
-  const [fontName, setFontName] = useState<string | null>(null);
   const [uploadingFont, setUploadingFont] = useState(false);
   const fontInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFontUpload = async (file: File | undefined) => {
-    if (!file) return;
+  const handleFontUpload = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
     setUploadingFont(true);
     setFontWarning(null);
     try {
-      const buffer = await file.arrayBuffer();
-      const parsed = await parseFontBuffer(buffer);
-      if (parsed?.isVariable) {
-        setFontWarning("This is a variable font — only its default instance will be used for outline-based morphing.");
+      const newFonts: AssetRef[] = [];
+      for (const file of Array.from(fileList)) {
+        const buffer = await file.arrayBuffer();
+        const parsed = await parseFontBuffer(buffer);
+        if (parsed?.isVariable) {
+          setFontWarning(`"${file.name}" is a variable font — only its default instance will be used for outline-based morphing.`);
+        }
+        const uploaded = await uploadAsset("font", file);
+        newFonts.push({ id: uploaded.id, name: uploaded.originalName });
       }
-      const uploaded = await uploadAsset("font", file);
-      setFontName(uploaded.originalName);
-      setTypography({ fontFileId: uploaded.id });
+      const nextFonts = [...scene.fonts, ...newFonts];
+      const nextDefault = scene.typography.fontFileId ?? newFonts[0]?.id ?? null;
+      onChange({ ...scene, fonts: nextFonts, typography: { ...scene.typography, fontFileId: nextDefault } });
     } catch (err) {
       setFontWarning(err instanceof Error ? err.message : String(err));
     } finally {
       setUploadingFont(false);
     }
+  };
+
+  const removeFont = (id: string) => {
+    const nextFonts = scene.fonts.filter((f) => f.id !== id);
+    const nextDefault = scene.typography.fontFileId === id ? (nextFonts[0]?.id ?? null) : scene.typography.fontFileId;
+    onChange({ ...scene, fonts: nextFonts, typography: { ...scene.typography, fontFileId: nextDefault } });
   };
 
   return (
@@ -179,26 +189,49 @@ export function GlobalPanel({
         />
       </label>
 
-      <h3>Typography</h3>
+      <h3>Fonts</h3>
       <label className="field">
-        <span>Font</span>
+        <span>Font library</span>
         <div className="field-row">
           <button type="button" disabled={uploadingFont} onClick={() => fontInputRef.current?.click()}>
-            {fontName ?? "Upload font…"}
+            {uploadingFont ? "Uploading…" : "Add font(s)…"}
           </button>
         </div>
         <input
           ref={fontInputRef}
           type="file"
           accept=".ttf,.otf,.woff,.woff2"
+          multiple
           hidden
           onChange={(e) => {
-            void handleFontUpload(e.target.files?.[0]);
+            void handleFontUpload(e.target.files);
             e.target.value = "";
           }}
         />
       </label>
       {fontWarning && <p className="warning">{fontWarning}</p>}
+
+      {scene.fonts.length > 0 && (
+        <ul className="font-list">
+          {scene.fonts.map((f) => (
+            <li key={f.id} className="font-list-row">
+              <label className="font-list-radio">
+                <input
+                  type="radio"
+                  name="default-font"
+                  checked={scene.typography.fontFileId === f.id}
+                  onChange={() => setTypography({ fontFileId: f.id })}
+                />
+                <span title={f.name}>{f.name}</span>
+              </label>
+              <button type="button" onClick={() => removeFont(f.id)} title="Remove">
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="hint">The default font applies wherever a module hasn't picked its own font override.</p>
 
       <SliderField label="Font size" value={scene.typography.fontSize} min={8} max={300} step={1} onChange={(v) => setTypography({ fontSize: v })} />
       <SliderField label="Letter spacing" value={scene.typography.letterSpacing} min={-10} max={60} step={0.5} onChange={(v) => setTypography({ letterSpacing: v })} />

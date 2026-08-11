@@ -16,6 +16,8 @@ export interface ImageFieldSlot {
   rotationDriftSign: 1 | -1;
   /** Stable creation order, used for entrance stagger sequencing. */
   order: number;
+  /** Base angle (degrees) around the ring/coverflow axis — only meaningful when layoutMode is "carousel". */
+  angleDeg: number;
 }
 
 export interface ImageFieldLayout {
@@ -30,6 +32,7 @@ interface SlotSeed {
   order: number;
   speedMultiplier?: number;
   depthHint?: number; // 0..1, overrides scale-based depth when present (cluster)
+  angleDeg?: number; // carousel only
 }
 
 function layoutScatter(
@@ -134,6 +137,36 @@ function layoutBands(config: ImageFieldAnimationConfig, tileW: number, tileH: nu
   return seeds;
 }
 
+/** Equidistant grid — every image evenly spaced, no jitter, no density gaps ("make everything equidistant"). */
+function layoutGrid(tileW: number, tileH: number, count: number): SlotSeed[] {
+  if (count === 0) return [];
+  const cols = Math.ceil(Math.sqrt(count));
+  const rows = Math.ceil(count / cols);
+  const cellW = tileW / cols;
+  const cellH = tileH / rows;
+  const seeds: SlotSeed[] = [];
+  for (let i = 0; i < count; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    seeds.push({ baseX: (col + 0.5) * cellW, baseY: (row + 0.5) * cellH, order: i });
+  }
+  return seeds;
+}
+
+/**
+ * Evenly spaced angular positions around a ring. baseX/baseY are left at
+ * the tile center as neutral placeholders — the carousel render path
+ * (src/animations/imageField/index.ts) positions images from angleDeg
+ * directly and bypasses the drift/wrap system the other layouts use.
+ */
+function layoutCarousel(tileW: number, tileH: number, count: number): SlotSeed[] {
+  const seeds: SlotSeed[] = [];
+  for (let i = 0; i < count; i++) {
+    seeds.push({ baseX: tileW / 2, baseY: tileH / 2, order: i, angleDeg: count > 0 ? (i * 360) / count : 0 });
+  }
+  return seeds;
+}
+
 function finalizeSlots(
   seeds: SlotSeed[],
   config: ImageFieldAnimationConfig,
@@ -164,6 +197,7 @@ function finalizeSlots(
       phase,
       rotationDriftSign,
       order: seed.order,
+      angleDeg: seed.angleDeg ?? 0,
     };
   });
 }
@@ -191,6 +225,12 @@ export function computeImageFieldLayout(config: ImageFieldAnimationConfig, tileW
       break;
     case "bands":
       seeds = layoutBands(config, tileWidth, tileHeight, count);
+      break;
+    case "grid":
+      seeds = layoutGrid(tileWidth, tileHeight, count);
+      break;
+    case "carousel":
+      seeds = layoutCarousel(tileWidth, tileHeight, count);
       break;
   }
 
