@@ -169,6 +169,14 @@ export function ImageFieldParamsPanel({ config, onChange, canvas, onCanvasChange
         {config.rotationDriftEnabled && (
           <SliderField label="Degrees/loop" value={config.rotationDriftDegreesPerLoop} min={0} max={90} step={1} onChange={(v) => set("rotationDriftDegreesPerLoop", v)} />
         )}
+
+        <label className="field field-checkbox">
+          <input type="checkbox" checked={config.edgeFadeEnabled} onChange={(e) => set("edgeFadeEnabled", e.target.checked)} />
+          <span>Edge fade (shrink in/out at canvas edges)</span>
+        </label>
+        {config.edgeFadeEnabled && (
+          <SliderField label="Fade zone width %" value={config.edgeFadeWidthPct} min={2} max={50} step={1} onChange={(v) => set("edgeFadeWidthPct", v)} />
+        )}
       </details>
       )}
 

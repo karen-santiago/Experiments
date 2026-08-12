@@ -89,6 +89,16 @@ function boxSizeFor(config: ImageFieldAnimationConfig, image: AssetRef | undefin
   return { w, h: w / aspect };
 }
 
+/** 1 in the middle of the canvas, tapering to 0 within `edgeFadeWidthPct` of either edge along the drift axis. */
+function edgeFadeFactor(pos: number, axisSize: number, config: ImageFieldAnimationConfig): number {
+  if (!config.edgeFadeEnabled) return 1;
+  const zone = axisSize * (config.edgeFadeWidthPct / 100);
+  if (zone <= 0) return 1;
+  if (pos < zone) return Math.max(0, pos / zone);
+  if (pos > axisSize - zone) return Math.max(0, (axisSize - pos) / zone);
+  return 1;
+}
+
 /**
  * Carousel is a distinct rotating motion, not the shared direction/speed
  * drift+wrap every other layout uses — each image orbits a fixed angle
@@ -209,6 +219,8 @@ export const imageFieldModule: AnimationModule<ImageFieldAnimationConfig> = {
     swayFrequency: 1,
     rotationDriftEnabled: false,
     rotationDriftDegreesPerLoop: 8,
+    edgeFadeEnabled: false,
+    edgeFadeWidthPct: 15,
 
     cornerRadius: 0,
     scaleMin: 0.6,
@@ -312,16 +324,23 @@ export const imageFieldModule: AnimationModule<ImageFieldAnimationConfig> = {
         for (const cy of vCopies) {
           const drawX = x + cx + entrance.offsetX;
           const drawY = y + cy + entrance.offsetY;
-          if (drawX + boxW / 2 < 0 || drawX - boxW / 2 > width) continue;
-          if (drawY + boxH / 2 < 0 || drawY - boxH / 2 > height) continue;
+
+          const edgeFactor = isHorizontal ? edgeFadeFactor(drawX, width, config) : edgeFadeFactor(drawY, height, config);
+          if (edgeFactor <= 0.002) continue;
+          const drawW = boxW * edgeFactor;
+          const drawH = boxH * edgeFactor;
+          const drawOpacity = opacity * edgeFactor;
+
+          if (drawX + drawW / 2 < 0 || drawX - drawW / 2 > width) continue;
+          if (drawY + drawH / 2 < 0 || drawY - drawH / 2 > height) continue;
           drawImageTile(ctx, bitmap, {
             cx: drawX,
             cy: drawY,
-            width: boxW,
-            height: boxH,
+            width: drawW,
+            height: drawH,
             rotationDeg: rotation,
             cornerRadius: config.cornerRadius,
-            opacity,
+            opacity: drawOpacity,
             focal: config.focalPoints[image.id],
             shadow: config.shadowEnabled
               ? { blur: config.shadowBlur, offsetY: config.shadowOffsetY, opacity: config.shadowOpacity }

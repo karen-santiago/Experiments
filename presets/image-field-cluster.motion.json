@@ -76,7 +76,9 @@
     "carouselStyle": "coverflow",
     "carouselRadius": 320,
     "carouselRotationSpeed": 40,
-    "carouselTilt": 0.6
+    "carouselTilt": 0.6,
+    "edgeFadeEnabled": false,
+    "edgeFadeWidthPct": 15
   },
   "fonts": []
 }

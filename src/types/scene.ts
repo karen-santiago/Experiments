@@ -150,6 +150,13 @@ export interface ImageFieldAnimationConfig {
   rotationDriftEnabled: boolean;
   rotationDriftDegreesPerLoop: number;
 
+  // Position-based (not time-based) shrink+fade near the canvas edges, so
+  // images grow in from nothing as they drift into view and shrink to
+  // nothing as they drift out, instead of being clipped at the boundary.
+  // Independent of `entrance` — works continuously with the loop.
+  edgeFadeEnabled: boolean;
+  edgeFadeWidthPct: number; // 0..50, % of the drift axis used as the fade zone on each side
+
   cornerRadius: number; // px
   scaleMin: number;
   scaleMax: number;
